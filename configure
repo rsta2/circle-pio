@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd circle-stdlib/
+configure -r 5 -p aarch64-none-elf- -o MAINPROC=_main -o NO_BUSY_WAIT $*
+cd ..
