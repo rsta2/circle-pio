@@ -243,7 +243,9 @@ static int rp1_ioctl(PIO pio, int request, void *args)
     RP1_PIO rp = (RP1_PIO)pio;
     int err = ioctl(rp->fd, request, args);
     switch (err) {
+#ifndef __circle__
     case -EREMOTEIO:
+#endif
     case -ETIMEDOUT:
         pio_panic("Error communicating with RP1");
         break;
@@ -848,19 +850,25 @@ static PIO rp1_create_instance(PIO_CHIP_T *chip, uint index)
 static int rp1_open_instance(PIO pio)
 {
     RP1_PIO rp = (RP1_PIO)pio;
+#ifndef __circle__
     int fd;
 
     fd = open(rp->devname, O_RDWR, O_CLOEXEC);
     if (fd < 0)
         return -errno;
     rp->fd = fd;
+#else
+    rp->fd = 42;
+#endif
     return 0;
 }
 
 static void rp1_close_instance(PIO pio)
 {
+#ifndef __circle__
     RP1_PIO rp = (RP1_PIO)pio;
     close(rp->fd);
+#endif
 }
 
 DECLARE_PIO_CHIP(rp1) {

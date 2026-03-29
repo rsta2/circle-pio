@@ -14,16 +14,28 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef __circle__
+#include <circle/sched/mutex.h>
+#endif
+
 #include "piolib.h"
 #include "piolib_priv.h"
 
 #define PIO_MAX_INSTANCES 4
 
+#ifdef __circle__
+int nanosleep(const struct timespec *duration, struct timespec *remaining);
+#endif
+
 static __thread PIO __pio;
 
 static PIO pio_instances[PIO_MAX_INSTANCES];
 static uint num_instances;
+#ifdef __circle__
+static CMutex pio_handle_lock;
+#else
 static pthread_mutex_t pio_handle_lock;
+#endif
 
 void pio_select(PIO pio)
 {
@@ -60,7 +72,9 @@ int pio_init(void)
     static bool initialised;
     const PIO_CHIP_T * const *p;
     uint i = 0;
+#ifndef __circle__
     int err;
+#endif
 
     if (initialised)
         return 0;
@@ -80,9 +94,11 @@ int pio_init(void)
         }
     }
 
+#ifndef __circle__
     err = pthread_mutex_init(&pio_handle_lock, NULL);
     if (err)
         return err;
+#endif
 
     initialised = true;
     return 0;
@@ -100,7 +116,11 @@ PIO pio_open(uint idx)
     if (idx >= num_instances)
         return PIO_ERR(-EINVAL);
 
+#ifdef __circle__
+    pio_handle_lock.Acquire();
+#else
     pthread_mutex_lock(&pio_handle_lock);
+#endif
 
     pio = pio_instances[idx];
     if (pio) {
@@ -110,7 +130,11 @@ PIO pio_open(uint idx)
             pio->in_use = 1;
     }
 
+#ifdef __circle__
+    pio_handle_lock.Release();
+#else
     pthread_mutex_unlock(&pio_handle_lock);
+#endif
 
     if (err)
         return PIO_ERR(err);
@@ -164,9 +188,17 @@ PIO pio_open_helper(uint idx)
 void pio_close(PIO pio)
 {
     pio->chip->close_instance(pio);
+#ifdef __circle__
+    pio_handle_lock.Acquire();
+#else
     pthread_mutex_lock(&pio_handle_lock);
+#endif
     pio->in_use = 0;
+#ifdef __circle__
+    pio_handle_lock.Release();
+#else
     pthread_mutex_unlock(&pio_handle_lock);
+#endif
 }
 
 void pio_panic(const char *msg)
@@ -177,8 +209,8 @@ void pio_panic(const char *msg)
 
 void sleep_us(uint64_t us) {
     const struct timespec tv = {
-        .tv_sec = (us / 1000000),
-        .tv_nsec = 1000ull * (us % 1000000)
+        .tv_sec = (time_t) (us / 1000000),
+        .tv_nsec = (time_t) (1000ull * (us % 1000000))
     };
     nanosleep(&tv, NULL);
 }
