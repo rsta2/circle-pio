@@ -1,10 +1,18 @@
 circle-pio
 ==========
 
-The project provides support for the Programmable I/O (PIO) peripheral of the Raspberry Pi 5 for Circle. The project uses circle-stdlib as a submodule.
+> Raspberry Pi is a trademark of Raspberry Pi Ltd.
 
-Building
---------
+The project provides support for the programmable input/output block (PIO) in the Raspberry Pi 5 within Circle. It uses circle-stdlib as a submodule.
+
+The following links refer to PIO support for Raspberry Pi OS and for the RP2040 Microcontroller. This information can help to program the PIO in Circle.
+
+* [PIOLib: A userspace library for PIO control](https://www.raspberrypi.com/news/piolib-a-userspace-library-for-pio-control)
+* [RP2040 datasheet with PIO section](https://pip.raspberrypi.com/documents/RP-008371-DS-1-rp2040-datasheet.pdf)
+* [hardware_pio API documentation in Pico C SDK](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#group_hardware_pio)
+
+Build
+-----
 
 This project builds best on a Linux host. You need to install a bare-metal toolchain from [here](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads). The build has been tested with GCC version *14.3.Rel1* from this website.
 
@@ -43,5 +51,4 @@ Cleanup project with:
 ```
 make clean
 make unpatch
-
 ```
