@@ -37,6 +37,20 @@ Then configure and build circle-stdlib. The `-p` option must be applied with an 
 make -j
 ```
 
+For a number of examples the *pioasm* tool from the Pico SDK is needed. You can download and build it with:
+
+```
+git clone https://github.com/raspberrypi/pico-sdk.git
+cd pico-sdk
+git checkout 2.2.0
+export PICOTOOL_FETCH_FROM_GIT_PATH=/tmp	# temp directory
+mkdir build
+cd build
+cmake ..
+make pioasmBuild
+cp pioasm/pioasm ~/bin	# install it in your personal bin directory
+```
+
 Now you can go to the examples directory and build it:
 
 ```
