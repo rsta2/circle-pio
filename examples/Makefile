@@ -2,6 +2,8 @@
 # Makefile
 #
 
+all: examples pico-examples logic_analyser
+
 examples:
 	EXAMPLE=ws2812 make -C piolib copy
 	EXAMPLE=piotest make -C piolib copy
@@ -19,7 +21,12 @@ pico-examples:
 	EXAMPLE=pwm make -C pico-examples copy
 	EXAMPLE=ws2812 make -C pico-examples copy
 
+.PHONY: logic_analyser
+logic_analyser:
+	make -C logic_analyser copy
+
 clean:
 	make -C piolib clean
 	make -C pico-examples clean
+	make -C logic_analyser clean
 	rm -f ./kernel*.img

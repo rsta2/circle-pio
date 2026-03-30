@@ -1,0 +1,10 @@
+README
+
+This program samples the input level of GPIO17/18 with a rate of 200 MHz and
+displays the result afterwards. It is been ported from the pico-examples
+project:
+
+	https://github.com/raspberrypi/pico-examples
+
+When you connect GPIO4 (GP0 clock output) with GPIO17 or GPIO18, you will see
+a 25 MHz square wave signal.
