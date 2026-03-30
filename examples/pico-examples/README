@@ -1,0 +1,20 @@
+README
+
+These examples have been taken from the pico-examples project:
+
+	https://github.com/raspberrypi/pico-examples
+
+To build them, you need the pioasm tool in your PATH. You can get and build it
+from the Pico SDK with the following commands:
+
+	git clone https://github.com/raspberrypi/pico-sdk.git
+	cd pico-sdk
+	git checkout 2.2.0
+	export PICOTOOL_FETCH_FROM_GIT_PATH=/tmp
+	mkdir build
+	cd build
+	cmake ..
+	make pioasmBuild
+	cp pioasm/pioasm ~/bin	# install it in your personal bin directory
+
+The default LED pin is GPIO4. You may have to update this in the Makefile.

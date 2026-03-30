@@ -12,6 +12,14 @@ examples:
 	EXAMPLE=dpi_csync make -C piolib copy
 	EXAMPLE=rp1sm make -C piolib copy
 
+.PHONY: pico-examples
+pico-examples:
+	EXAMPLE=hello make -C pico-examples copy
+	EXAMPLE=addition make -C pico-examples copy
+	EXAMPLE=pwm make -C pico-examples copy
+	EXAMPLE=ws2812 make -C pico-examples copy
+
 clean:
 	make -C piolib clean
+	make -C pico-examples clean
 	rm -f ./kernel*.img

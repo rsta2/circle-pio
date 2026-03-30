@@ -40,4 +40,8 @@ LIBS += $(CIRCLE_PIO_HOME)/driver/libpiodriver.a \
 	$(CIRCLEHOME)/lib/sched/libsched.a \
 	$(CIRCLEHOME)/lib/libcircle.a
 
+%.pio.h: %.pio
+	@echo "  PIO   $@"
+	@pioasm -o c-sdk $< $@
+
 -include $(DEPS)

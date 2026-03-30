@@ -10,7 +10,10 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "piolib.h"
+
+#define hard_assert assert
 
 #endif
