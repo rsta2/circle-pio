@@ -515,8 +515,9 @@ void CRP1PIO::rp1_pio_sm_dma_callback(unsigned nchan, unsigned nbuf,
 void CRP1PIO::rp1_pio_sm_dma_free(struct dma_info *dma)
 {
 	assert (dma);
-	assert (dma->chan);
-	dma->chan->Cancel();
+	if (dma->chan) {
+		dma->chan->Cancel();
+	}
 	while (dma->buf_count > 0) {
 		dma->buf_count--;
 		delete [] (u8 *) dma->bufs[dma->buf_count].buf;
@@ -545,7 +546,6 @@ int CRP1PIO::rp1_pio_sm_config_xfer_internal(rp1_pio_client *client, unsigned sm
 	dma_mask = 1 << (sm * 2 + dir);
 
 	dma = &m_dma_configs[sm][dir];
-	memset (dma, 0, sizeof *dma);
 
 	m_spinlock.Acquire();
 	if (m_claimed_dmas & dma_mask)
@@ -553,6 +553,8 @@ int CRP1PIO::rp1_pio_sm_config_xfer_internal(rp1_pio_client *client, unsigned sm
 	m_claimed_dmas |= dma_mask;
 	client->claimed_dmas |= dma_mask;
 	m_spinlock.Release();
+
+	memset (dma, 0, sizeof *dma);
 
 	dma->buf_size = buf_size;
 	/* Round up the allocations */
