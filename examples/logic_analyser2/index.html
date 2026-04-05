@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="iso-8859-1" />
+<title>Digital Logic Analyzer</title>
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+<body>
+<div id="container">
+  <h2>Digital Logic Analyzer</h2>
+  <div id="status">Position: 0 / 500,000 samples - Samples/pixel: auto</div>
+  <canvas id="waveCanvas" height="600"></canvas>
+
+  <div id="controls">
+    <div class="buttons">
+      <button id="startBtn">Start</button>
+
+      <label class="small">Sample rate:
+        <select id="sampleRate">
+          <option value="1000000">1 MHz</option>
+          <option value="5000000" selected>5 MHz</option>
+          <option value="10000000">10 MHz</option>
+          <option value="20000000">20 MHz</option>
+        </select>
+      </label>
+
+      <button id="homeBtn">|&lt;</button>
+      <button id="scrollLeftFast">&lt;&lt;</button>
+      <button id="scrollLeft">&lt;</button>
+
+      <button id="scrollRight">&gt;</button>
+      <button id="scrollRightFast">&gt;&gt;</button>
+      <button id="endBtn">&gt;|</button>
+
+      <button id="zoomIn">+</button>
+      <button id="zoomOut">-</button>
+
+      <label class="small">Trigger:
+        <select id="triggerChannel">
+          <option value="0" selected>None</option>
+          <option value="1">CH1</option>
+          <option value="2">CH2</option>
+          <option value="3">CH3</option>
+          <option value="4">CH4</option>
+        </select>
+        <select id="triggerLevel">
+          <option value="0">Low</option>
+          <option value="1" selected>High</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="ch-controls" id="channelControls">
+      <!-- per-channel grouped controls injected by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const V_WIDTH = 500_000;
+  const V_HEIGHT = 600;
+  const TOTAL_CHANNELS = 4; // physical channels
+  const COLORS = ['#E53935','#1E88E5','#43A047','#FB8C00'];
+
+  const canvas = document.getElementById('waveCanvas');
+  const ctx = canvas.getContext('2d');
+  const startBtn = document.getElementById('startBtn');
+  const sampleRateSelect = document.getElementById('sampleRate');
+  const scrollLeftFastBtn = document.getElementById('scrollLeftFast');
+  const scrollLeftBtn = document.getElementById('scrollLeft');
+  const scrollRightBtn = document.getElementById('scrollRight');
+  const scrollRightFastBtn = document.getElementById('scrollRightFast');
+  const zoomInBtn = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
+  const homeBtn = document.getElementById('homeBtn');
+  const endBtn = document.getElementById('endBtn');
+  const triggerChannel = document.getElementById('triggerChannel');
+  const triggerLevel = document.getElementById('triggerLevel');
+  const chControlsDiv = document.getElementById('channelControls');
+  const status = document.getElementById('status');
+
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(800, Math.floor(rect.width * dpr));
+    canvas.height = V_HEIGHT * dpr;
+    canvas.style.height = V_HEIGHT + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  let viewStart = 0;
+  let samplesPerPixel = 1;
+  let lastRate = 0;   // != 0 after runCapture() was running
+  const channelsData = Array.from({length:TOTAL_CHANNELS}, () => new Uint8Array(V_WIDTH));
+  const chSettings = [];
+  for (let i=0;i<TOTAL_CHANNELS;i++) {
+    chSettings.push({ enabled: true, triggerEnable: false, triggerHigh: true });
+  }
+
+  function showStatus() {
+      const runTimeUs = lastRate == 0 ? 0 : V_WIDTH / lastRate * 1_000_000;
+      const curTime = runTimeUs * viewStart / V_WIDTH;
+      status.textContent = `Position: ${curTime.toFixed(2)} / ${runTimeUs.toFixed(0)} µs - ${viewStart} / ${V_WIDTH} samples - Samples/pixel: ${samplesPerPixel}`;
+  }
+
+  async function runCapture() {
+    const rate = Math.max(1_000_000, Number(sampleRateSelect.value));
+    const trigger_channel = Number(triggerChannel.value);
+    const trigger_level = Number(triggerLevel.value);
+    const params = new URLSearchParams({
+      depth: `${V_WIDTH}`,
+      rate: `${rate}`,
+      trigger_channel: `${trigger_channel}`,
+      trigger_level: `${trigger_level}`
+    });
+    try {
+      const res = await fetch('/logic_analyser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/octect-stream'
+        },
+        body: params.toString()
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      // Wait for the entire body as ArrayBuffer
+      const buffer = await res.arrayBuffer();
+      const rawData = new Uint8Array(buffer); // complete binary data
+      if (rawData.length != V_WIDTH*TOTAL_CHANNELS/8) {
+          throw new Error(`Invalid response (${rawData.length})`);
+      }
+      for (let i = 0; i < V_WIDTH; i += 2) {
+        let j = i/2;
+        channelsData[0][i] = (rawData[j] & 1) ? 1 : 0;
+        channelsData[1][i] = (rawData[j] & 2) ? 1 : 0;
+        channelsData[2][i] = (rawData[j] & 4) ? 1 : 0;
+        channelsData[3][i] = (rawData[j] & 8) ? 1 : 0;
+        channelsData[0][i+1] = (rawData[j] & 16) ? 1 : 0;
+        channelsData[1][i+1] = (rawData[j] & 32) ? 1 : 0;
+        channelsData[2][i+1] = (rawData[j] & 64) ? 1 : 0;
+        channelsData[3][i+1] = (rawData[j] & 128) ? 1 : 0;
+      }
+      lastRate = rate;
+    } catch (err) {
+        confirm('Capture failed!');
+    }
+  }
+
+  // Return array of enabled channel indices in top->bottom order
+  function enabledChannelIndices() {
+    const inds = [];
+    for (let i=0;i<TOTAL_CHANNELS;i++) if (chSettings[i].enabled) inds.push(i);
+    return inds;
+  }
+
+  function draw() {
+    const w = canvas.clientWidth;
+    const h = V_HEIGHT;
+    ctx.clearRect(0,0,w,h);
+
+    const enabled = enabledChannelIndices();
+    const visibleChannels = enabled.length || 1; // if none enabled, still show one lane with "no channels"
+    const channelHeight = h / visibleChannels;
+
+    if (enabled.length === 0) {
+      // draw message lane
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = '#999';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('No channels enabled', 12, 32);
+      showStatus();
+      return;
+    }
+
+    // For each visible lane, map to a physical channel index
+    for (let lane = 0; lane < visibleChannels; lane++) {
+      const ch = enabled[lane];
+      const y0 = lane * channelHeight;
+
+      // background & midline
+      ctx.fillStyle = lane%2 ? '#f7f7f7' : '#ffffff';
+      ctx.fillRect(0, y0, w, channelHeight);
+      ctx.strokeStyle = '#ddd';
+      ctx.beginPath();
+      ctx.moveTo(0, y0 + channelHeight/2);
+      ctx.lineTo(w, y0 + channelHeight/2);
+      ctx.stroke();
+
+      // label
+      ctx.fillStyle = '#333';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('CH' + (ch+1), 6, y0 + 14);
+
+      ctx.strokeStyle = COLORS[ch];
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      const start = Math.floor(viewStart);
+      for (let px = 0; px < w; px++) {
+        const s = start + Math.floor(px * samplesPerPixel);
+        const span = Math.min(samplesPerPixel, V_WIDTH - s);
+        let bgnVal = channelsData[ch][s];
+        let endVal = bgnVal;
+        if (span > 0) endVal = channelsData[ch][s+span-1];
+        let bothVal = 0;
+        if (bgnVal != endVal) {
+          bothVal = 1;
+        } else {
+          for (let k=0;k<span;k++){
+            let val = channelsData[ch][s+k];
+            if (val != bgnVal || val != endVal) { bothVal = 1; break; }
+          }
+        }
+        const vy0 = y0 + channelHeight * 0.8;
+        const vy1 = y0 + channelHeight * 0.2;
+        if (px===0) ctx.moveTo(px, bgnVal ? vy1 : vy0);
+        else ctx.lineTo(px, bgnVal ? vy1 : vy0);
+        if (bothVal) ctx.lineTo (px, bgnVal ? vy0 : vy1);
+        ctx.lineTo(px, endVal ? vy1 : vy0);
+      }
+      ctx.stroke();
+    }
+
+    // vertical grid
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.lineWidth = 1;
+    const gridSamples = Math.pow(10, Math.max(0, Math.floor(Math.log10(samplesPerPixel*50))));
+    const pixelsPerGrid = gridSamples / samplesPerPixel;
+    if (pixelsPerGrid > 10) {
+      for (let x = 0; x < w; x += pixelsPerGrid) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+    }
+
+    showStatus();
+  }
+
+  function createChannelControls() {
+    chControlsDiv.innerHTML = '';
+    for (let ch=0; ch<TOTAL_CHANNELS; ch++) {
+      const div = document.createElement('div');
+      div.className = 'channel';
+      div.style.borderLeftColor = COLORS[ch];
+      div.innerHTML = `
+        <div class="row"><strong>CH${ch+1}</strong>
+          <label><input type="checkbox" class="ch-enable" data-ch="${ch}" ${chSettings[ch].enabled ? 'checked' : ''}> Enable</label>
+        </div>
+      `;
+      chControlsDiv.appendChild(div);
+    }
+    chControlsDiv.querySelectorAll('.ch-enable').forEach(cb=>{
+      cb.addEventListener('change', e=>{
+        const ch = Number(cb.dataset.ch);
+        chSettings[ch].enabled = cb.checked;
+        draw();
+      });
+    });
+  }
+
+  createChannelControls();
+
+  startBtn.addEventListener('click', () => {
+    samplesPerPixel = 1;
+    runCapture();
+    setTimeout(() => {
+      homeBtn.click();
+    }, 1000);
+  });
+
+  function scrollBySamples(n) {
+    viewStart = Math.max(0, Math.min(V_WIDTH - 1, viewStart + n));
+    draw();
+  }
+
+  scrollLeftBtn.addEventListener('click', ()=> {
+    const step = -Math.max(1, Math.floor(canvas.clientWidth * samplesPerPixel / 4));
+    scrollBySamples(step);
+  });
+
+  scrollRightBtn.addEventListener('click', ()=> {
+    const step = Math.max(1, Math.floor(canvas.clientWidth * samplesPerPixel / 4));
+    scrollBySamples(step);
+  });
+
+  scrollLeftFastBtn.addEventListener('click', ()=> {
+    const step = -Math.max(1, Math.floor(canvas.clientWidth * samplesPerPixel));
+    scrollBySamples(step);
+  });
+
+  scrollRightFastBtn.addEventListener('click', ()=> {
+    const step = Math.max(1, Math.floor(canvas.clientWidth * samplesPerPixel));
+    scrollBySamples(step);
+  });
+
+  homeBtn.addEventListener('click', ()=> { viewStart = 0; draw(); });
+  endBtn.addEventListener('click', ()=> { viewStart = Math.max(0, V_WIDTH - Math.ceil(canvas.clientWidth * samplesPerPixel)); draw(); });
+
+  function setZoom(factor) {
+    const old = samplesPerPixel;
+    samplesPerPixel = Math.max(1, Math.round(samplesPerPixel * factor));
+    const centerPx = canvas.clientWidth / 2;
+    const centerSample = viewStart + Math.floor(centerPx * old);
+    viewStart = Math.max(0, Math.min(V_WIDTH - 1, centerSample - Math.floor(centerPx * samplesPerPixel)));
+    draw();
+  }
+  zoomInBtn.addEventListener('click', ()=> setZoom(0.5));
+  zoomOutBtn.addEventListener('click', ()=> setZoom(2));
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY);
+    const factor = delta > 0 ? 1.25 : 0.8;
+    setZoom(factor);
+  });
+
+  let dragging = false, dragStartX=0, dragStartView=0;
+  canvas.addEventListener('mousedown', (e) => {
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartView = viewStart;
+    canvas.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - dragStartX;
+    const deltaSamples = Math.round(dx * samplesPerPixel);
+    viewStart = Math.max(0, Math.min(V_WIDTH - 1, dragStartView - deltaSamples));
+    draw();
+  });
+  window.addEventListener('mouseup', ()=> {
+    dragging = false;
+    canvas.style.cursor = 'default';
+  });
+
+  // init
+  resizeCanvas();
+  homeBtn.click();
+
+})();
+</script>
+</body>
+</html>
