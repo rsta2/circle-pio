@@ -14,7 +14,7 @@ The following links refer to PIO support for Raspberry Pi OS and for the RP2040 
 Build
 -----
 
-This project builds best on a Linux host. You need to install a bare-metal toolchain from [here](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads). The build has been tested with GCC version *14.3.Rel1* from this website.
+You need to install a bare-metal toolchain from [here](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads). The build has been tested on a Linux host with GCC version *15.2.Rel1* from this website.
 
 You can download the circle-pio source code and the necessary submodule using:
 
