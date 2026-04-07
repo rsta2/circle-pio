@@ -38,7 +38,6 @@ public:
 	static const unsigned RP1_PIO_SMS_COUNT   = 4;
 	static const unsigned RP1_PIO_INSTR_COUNT = 32;
 
-	static const unsigned DMA_CHANNEL_BASE = 6;		// use channels 6 and 7
 	static const unsigned DMA_BOUNCE_BUFFER_SIZE = 0x1000;
 	static const unsigned DMA_BOUNCE_BUFFER_COUNT = 4;
 

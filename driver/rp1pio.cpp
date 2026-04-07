@@ -573,7 +573,7 @@ int CRP1PIO::rp1_pio_sm_config_xfer_internal(rp1_pio_client *client, unsigned sm
 	unsigned txrx = dir == RP1_PIO_DIR_TO_SM ? 0 : 1;
 	assert (m_pInterrupt);
 	assert (!dma->chan);
-	dma->chan = new CDMAChannelRP1(DMA_CHANNEL_BASE + txrx, m_pInterrupt);
+	dma->chan = new CDMAChannelRP1(DMA_CHANNEL_RP1_FAST, m_pInterrupt);
 	assert (dma->chan);
 	dma->dreq = s_DREQ[sm][txrx];
 
