@@ -13,10 +13,10 @@ clean:
 	$(MAKE) -C circle-stdlib mrproper
 
 patch:
-	cd circle-stdlib/libs/circle && git checkout --quiet develop
+	@echo Patching is not necessary any more.
 
 unpatch:
-	cd circle-stdlib && git submodule update --quiet libs/circle
+	@echo Patching is not necessary any more.
 
 submodules:
 	git submodule update --init circle-stdlib

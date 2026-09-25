@@ -24,12 +24,6 @@ cd circle-pio
 make submodules
 ```
 
-Currently the latest Circle version has to be fetched with:
-
-```
-make patch
-```
-
 Then configure and build circle-stdlib. The `-p` option must be applied with an absolute path to the toolchain binaries, if they are not in the `PATH` environment variable.
 
 ```
@@ -64,5 +58,4 @@ Cleanup project with:
 
 ```
 make clean
-make unpatch
 ```
